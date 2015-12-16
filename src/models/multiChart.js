@@ -52,6 +52,13 @@ nv.models.multiChart = function() {
         tooltip = nv.models.tooltip(),
         dispatch = d3.dispatch();
 
+    // Because we use padData to adjust lines' outer padding so the data points line
+    // up with the middle of the bars, we have to turn off voronoi because the use
+    // of padData seem to cause conflict with the voronoi calculations in d3.js.
+    lines1.scatter.useVoronoi(false);
+    lines2.scatter.useVoronoi(false);
+
+
     var charts = [lines1, lines2, scatters1, scatters2, bars1, bars2, stack1, stack2];
 
     function chart(selection) {
@@ -241,24 +248,56 @@ nv.models.multiChart = function() {
             bars2.yDomain(yScale2.domain());
             stack2.yDomain(yScale2.domain());
 
+            // This is the outer padding to offset lines and x-axis to line up data points with bars.
+            // When setting this variable, we're assuming all bars will be on bars1 or bars2, but not both.
+            var rbcOffset = 0;
+
             if(dataStack1.length){d3.transition(stack1Wrap).call(stack1);}
             if(dataStack2.length){d3.transition(stack2Wrap).call(stack2);}
 
-            if(dataBars1.length){d3.transition(bars1Wrap).call(bars1);}
-            if(dataBars2.length){d3.transition(bars2Wrap).call(bars2);}
+            //if(dataBars1.length){d3.transition(bars1Wrap).call(bars1);}
+            //if(dataBars2.length){d3.transition(bars2Wrap).call(bars2);}
+            if (dataBars1.length) {
+                d3.transition(bars1Wrap).call(bars1);
+                rbcOffset = bars1.rangeBandCentreOffset();
+                console.log("bars1 offset = " + rbcOffset);
+            }
+            if (dataBars2.length) {
+                d3.transition(bars2Wrap).call(bars2);
+                rbcOffset = bars2.rangeBandCentreOffset();
+                console.log("bars2 offset = " + rbcOffset);
+            }
 
-            if(dataLines1.length){d3.transition(lines1Wrap).call(lines1);}
-            if(dataLines2.length){d3.transition(lines2Wrap).call(lines2);}
+            //if(dataLines1.length){d3.transition(lines1Wrap).call(lines1);}
+            //if(dataLines2.length){d3.transition(lines2Wrap).call(lines2);}
+            if (dataLines1.length) {
+                lines1.scatter.padData(rbcOffset > 0);
+                d3.transition(lines1Wrap).call(lines1);
+            }
+            if (dataLines2.length) {
+                lines2.scatter.padData(rbcOffset > 0);
+                d3.transition(lines2Wrap).call(lines2);
+            }
 
             if(dataScatters1.length){d3.transition(scatters1Wrap).call(scatters1);}
             if(dataScatters2.length){d3.transition(scatters2Wrap).call(scatters2);}
 
             xAxis
+		.scale(x)
                 ._ticks( nv.utils.calcTicksX(availableWidth/100, data) )
                 .tickSize(-availableHeight, 0);
 
+
+            // We also want to add outer padding to x-axis so that axis ticks and labels align with
+            // data points at centre of bars. We do this by translating x-axis by rbcOffset, and
+            // reducing the width of the entire axis (via a scale transformation)
             g.select('.nv-x.nv-axis')
-                .attr('transform', 'translate(0,' + availableHeight + ')');
+//                .attr('transform', 'translate(0,' + availableHeight + ')');
+                .attr('transform',
+                      'translate(' + rbcOffset + ', ' + availableHeight + ') ' +
+                      'scale(' + ((availableWidth - rbcOffset*2)/availableWidth) + ', 1)'
+		     )
+
             d3.transition(g.select('.nv-x.nv-axis'))
                 .call(xAxis);
 
@@ -602,6 +641,7 @@ nv.models.multiChart = function() {
               model.duration(duration);
             });
         }}
+
     });
 
     nv.utils.initOptions(chart);
