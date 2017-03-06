@@ -1,4 +1,4 @@
-/* nvd3 version 1.8.5-dev (https://github.com/novus/nvd3) 2017-02-15 */
+/* nvd3 version 1.8.5-dev (https://github.com/novus/nvd3) 2017-03-06 */
 (function(){
 
 // set up main nv object
@@ -1590,6 +1590,27 @@ nv.utils.arrayEquals = function (array1, array2) {
     }
     return true;
 };
+
+/*
+ Check if a point within an arc
+ */
+nv.utils.pointIsInArc = function(pt, ptData, d3Arc) {
+    // Center of the arc is assumed to be 0,0
+    // (pt.x, pt.y) are assumed to be relative to the center
+    var r1 = d3Arc.innerRadius()(ptData), // Note: Using the innerRadius
+      r2 = d3Arc.outerRadius()(ptData),
+      theta1 = d3Arc.startAngle()(ptData),
+      theta2 = d3Arc.endAngle()(ptData);
+
+    var dist = pt.x * pt.x + pt.y * pt.y,
+      angle = Math.atan2(pt.x, -pt.y); // Note: different coordinate system.
+
+    angle = (angle < 0) ? (angle + Math.PI * 2) : angle;
+
+    return (r1 * r1 <= dist) && (dist <= r2 * r2) &&
+      (theta1 <= angle) && (angle <= theta2);
+};
+
 nv.models.axis = function() {
     "use strict";
 
@@ -7992,6 +8013,7 @@ nv.models.multiBar = function() {
         , groupSpacing = 0.1
         , fillOpacity = 0.75
         , dispatch = d3.dispatch('chartClick', 'elementClick', 'elementDblClick', 'elementMouseover', 'elementMouseout', 'elementMousemove', 'renderEnd')
+        , rangeBandCentreOffset = 0 // For exclusive use by multiChart.
         ;
 
     //============================================================
@@ -8094,6 +8116,9 @@ nv.models.multiBar = function() {
 
             x.domain(xDomain || d3.merge(seriesData).map(function(d) { return d.x }))
                 .rangeBands(xRange || [0, availableWidth], groupSpacing);
+
+            // This value is exclusively used by multiChart later on to adjust lines and x-axis to align with bars.
+            rangeBandCentreOffset = x.rangeBand() / 2.0 + (groupSpacing * x.rangeBand()); // Verify groupSpacing part later.
 
             y.domain(yDomain || d3.extent(d3.merge(seriesData).map(function(d) {
                 var domain = d.y;
@@ -8370,6 +8395,7 @@ nv.models.multiBar = function() {
         hideable:    {get: function(){return hideable;}, set: function(_){hideable=_;}},
         groupSpacing:{get: function(){return groupSpacing;}, set: function(_){groupSpacing=_;}},
         fillOpacity: {get: function(){return fillOpacity;}, set: function(_){fillOpacity=_;}},
+        rangeBandCentreOffset: {get: function() {return rangeBandCentreOffset;}, set: function(_) {rangeBandCentreOffset = _;}},
 
         // options that require extra logic in the setter
         margin: {get: function(){return margin;}, set: function(_){
@@ -9738,6 +9764,13 @@ nv.models.multiChart = function() {
         tooltip = nv.models.tooltip(),
         dispatch = d3.dispatch();
 
+    // Because we use padData to adjust lines' outer padding so the data points line
+    // up with the middle of the bars, we have to turn off voronoi because the use
+    // of padData seem to cause conflict with the voronoi calculations in d3.js.
+    lines1.scatter.useVoronoi(false);
+    lines2.scatter.useVoronoi(false);
+
+
     var charts = [lines1, lines2, scatters1, scatters2, bars1, bars2, stack1, stack2];
 
     function chart(selection) {
@@ -9927,24 +9960,56 @@ nv.models.multiChart = function() {
             bars2.yDomain(yScale2.domain());
             stack2.yDomain(yScale2.domain());
 
+            // This is the outer padding to offset lines and x-axis to line up data points with bars.
+            // When setting this variable, we're assuming all bars will be on bars1 or bars2, but not both.
+            var rbcOffset = 0;
+
             if(dataStack1.length){d3.transition(stack1Wrap).call(stack1);}
             if(dataStack2.length){d3.transition(stack2Wrap).call(stack2);}
 
-            if(dataBars1.length){d3.transition(bars1Wrap).call(bars1);}
-            if(dataBars2.length){d3.transition(bars2Wrap).call(bars2);}
+            //if(dataBars1.length){d3.transition(bars1Wrap).call(bars1);}
+            //if(dataBars2.length){d3.transition(bars2Wrap).call(bars2);}
+            if (dataBars1.length) {
+                d3.transition(bars1Wrap).call(bars1);
+                rbcOffset = bars1.rangeBandCentreOffset();
+                console.log("bars1 offset = " + rbcOffset);
+            }
+            if (dataBars2.length) {
+                d3.transition(bars2Wrap).call(bars2);
+                rbcOffset = bars2.rangeBandCentreOffset();
+                console.log("bars2 offset = " + rbcOffset);
+            }
 
-            if(dataLines1.length){d3.transition(lines1Wrap).call(lines1);}
-            if(dataLines2.length){d3.transition(lines2Wrap).call(lines2);}
+            //if(dataLines1.length){d3.transition(lines1Wrap).call(lines1);}
+            //if(dataLines2.length){d3.transition(lines2Wrap).call(lines2);}
+            if (dataLines1.length) {
+                lines1.scatter.padData(rbcOffset > 0);
+                d3.transition(lines1Wrap).call(lines1);
+            }
+            if (dataLines2.length) {
+                lines2.scatter.padData(rbcOffset > 0);
+                d3.transition(lines2Wrap).call(lines2);
+            }
 
             if(dataScatters1.length){d3.transition(scatters1Wrap).call(scatters1);}
             if(dataScatters2.length){d3.transition(scatters2Wrap).call(scatters2);}
 
             xAxis
+		.scale(x)
                 ._ticks( nv.utils.calcTicksX(availableWidth/100, data) )
                 .tickSize(-availableHeight, 0);
 
+
+            // We also want to add outer padding to x-axis so that axis ticks and labels align with
+            // data points at centre of bars. We do this by translating x-axis by rbcOffset, and
+            // reducing the width of the entire axis (via a scale transformation)
             g.select('.nv-x.nv-axis')
-                .attr('transform', 'translate(0,' + availableHeight + ')');
+//                .attr('transform', 'translate(0,' + availableHeight + ')');
+                .attr('transform',
+                      'translate(' + rbcOffset + ', ' + availableHeight + ') ' +
+                      'scale(' + ((availableWidth - rbcOffset*2)/availableWidth) + ', 1)'
+		     )
+
             d3.transition(g.select('.nv-x.nv-axis'))
                 .call(xAxis);
 
@@ -10288,6 +10353,7 @@ nv.models.multiChart = function() {
               model.duration(duration);
             });
         }}
+
     });
 
     nv.utils.initOptions(chart);
@@ -11336,6 +11402,7 @@ nv.models.pie = function() {
         , labelsOutside = false
         , labelType = "key"
         , labelThreshold = .02 //if slice percentage is under this, don't show label
+        , hideOverlapLabels = false //Hide labels that don't fit in slice
         , donut = false
         , title = false
         , growOnHover = true
@@ -11657,6 +11724,44 @@ nv.models.pie = function() {
                         return label;
                     })
                 ;
+
+                if (hideOverlapLabels) {
+                    pieLabels
+                        .each(function (d, i) {
+                            if (!this.getBBox) return;
+                            var bb = this.getBBox(),
+                            center = labelsArc[i].centroid(d);
+                            var topLeft = {
+                              x : center[0] + bb.x,
+                              y : center[1] + bb.y
+                            };
+
+                            var topRight = {
+                              x : topLeft.x + bb.width,
+                              y : topLeft.y
+                            };
+
+                            var bottomLeft = {
+                              x : topLeft.x,
+                              y : topLeft.y + bb.height
+                            };
+
+                            var bottomRight = {
+                              x : topLeft.x + bb.width,
+                              y : topLeft.y + bb.height
+                            };
+
+                            d.visible = nv.utils.pointIsInArc(topLeft, d, arc) &&
+                            nv.utils.pointIsInArc(topRight, d, arc) &&
+                            nv.utils.pointIsInArc(bottomLeft, d, arc) &&
+                            nv.utils.pointIsInArc(bottomRight, d, arc);
+                        })
+                        .style('display', function (d) {
+                            return d.visible ? null : 'none';
+                        })
+                    ;
+                }
+
             }
 
 
@@ -11698,6 +11803,7 @@ nv.models.pie = function() {
         title:      {get: function(){return title;}, set: function(_){title=_;}},
         titleOffset:    {get: function(){return titleOffset;}, set: function(_){titleOffset=_;}},
         labelThreshold: {get: function(){return labelThreshold;}, set: function(_){labelThreshold=_;}},
+        hideOverlapLabels: {get: function(){return hideOverlapLabels;}, set: function(_){hideOverlapLabels=_;}},
         valueFormat:    {get: function(){return valueFormat;}, set: function(_){valueFormat=_;}},
         x:          {get: function(){return getX;}, set: function(_){getX=_;}},
         id:         {get: function(){return id;}, set: function(_){id=_;}},
@@ -14781,7 +14887,7 @@ nv.models.stackedAreaChart = function() {
 
             interactiveLayer.dispatch.on('elementMousemove', function(e) {
                 stacked.clearHighlights();
-                var singlePoint, pointIndex, pointXLocation, allData = [], valueSum = 0, allNullValues = true;
+                var singlePoint, pointIndex, pointXLocation, allData = [], valueSum = 0, allNullValues = true, atleastOnePoint = false;
                 data
                     .filter(function(series, i) {
                         series.seriesIndex = i;
@@ -14793,6 +14899,7 @@ nv.models.stackedAreaChart = function() {
                         var pointYValue = chart.y()(point, pointIndex);
                         if (pointYValue != null && pointYValue > 0) {
                             stacked.highlightPoint(i, pointIndex, true);
+                            atleastOnePoint = true;
                         }
                     
                         // Draw at least one point if all values are zero.
