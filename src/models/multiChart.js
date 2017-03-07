@@ -267,12 +267,10 @@ nv.models.multiChart = function() {
             if (dataBars1.length) {
                 d3.transition(bars1Wrap).call(bars1);
                 rbcOffset = bars1.rangeBandCentreOffset();
-                console.log("bars1 offset = " + rbcOffset);
             }
             if (dataBars2.length) {
                 d3.transition(bars2Wrap).call(bars2);
                 rbcOffset = bars2.rangeBandCentreOffset();
-                console.log("bars2 offset = " + rbcOffset);
             }
 
             //if(dataLines1.length){d3.transition(lines1Wrap).call(lines1);}
@@ -304,6 +302,12 @@ nv.models.multiChart = function() {
                       'translate(' + rbcOffset + ', ' + availableHeight + ') ' +
                       'scale(' + ((availableWidth - rbcOffset*2)/availableWidth) + ', 1)'
 		     )
+
+            g.select('.nv-interactive')
+                .attr('transform',
+                'translate(' + rbcOffset + ', 0) ' +
+                'scale(' + ((availableWidth - rbcOffset * 2) / availableWidth) + ', 1)'
+                )
 
             d3.transition(g.select('.nv-x.nv-axis'))
                 .call(xAxis);
@@ -461,7 +465,11 @@ nv.models.multiChart = function() {
                             return chart.x()(d,i) >= extent[0] && chart.x()(d,i) <= extent[1];
                         });
 
-                        pointIndex = nv.interactiveBisect(currentValues, e.pointXValue, chart.x());
+                        //pointIndex = nv.interactiveBisect(currentValues, e.pointXValue, chart.x());
+
+                        pointIndex = Math.floor(e.pointXValue / 0.92);
+                        pointIndex = pointIndex > 0 ? pointIndex - 1 : 0;
+
                         var point = currentValues[pointIndex];
                         var pointYValue = chart.y()(point, pointIndex);
                         if (pointYValue !== null) {
@@ -495,7 +503,7 @@ nv.models.multiChart = function() {
                             series: allData
                         })();
 
-                    //interactiveLayer.renderGuideLine(pointXLocation);
+                    interactiveLayer.renderGuideLine(pointXLocation);
                 });
 
                 interactiveLayer.dispatch.on("elementMouseout",function(e) {
