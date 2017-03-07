@@ -8118,7 +8118,13 @@ nv.models.multiBar = function() {
                 .rangeBands(xRange || [0, availableWidth], groupSpacing);
 
             // This value is exclusively used by multiChart later on to adjust lines and x-axis to align with bars.
-            rangeBandCentreOffset = x.rangeBand() / 2.0 + (groupSpacing * x.rangeBand()); // Verify groupSpacing part later.
+            var offset = x.rangeBand() / 2.0 + (groupSpacing * x.rangeBand()); // Verify groupSpacing part later.
+
+            if (offset < 1000) {
+                rangeBandCentreOffset = offset;
+            } else {
+                rangeBandCentreOffset = 0;
+            }
 
             y.domain(yDomain || d3.extent(d3.merge(seriesData).map(function(d) {
                 var domain = d.y;
