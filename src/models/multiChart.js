@@ -470,6 +470,10 @@ nv.models.multiChart = function() {
                         pointIndex = Math.floor(e.pointXValue / 0.92);
                         pointIndex = pointIndex > 0 ? pointIndex - 1 : 0;
 
+                        if (currentValues.length - 1 < pointIndex) {
+                            pointIndex = currentValues.length - 1;
+                        }
+
                         var point = currentValues[pointIndex];
                         var pointYValue = chart.y()(point, pointIndex);
                         if (pointYValue !== null) {
