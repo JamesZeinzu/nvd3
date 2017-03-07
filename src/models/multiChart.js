@@ -488,7 +488,7 @@ nv.models.multiChart = function() {
                             series: allData
                         })();
 
-                    interactiveLayer.renderGuideLine(pointXLocation);
+                    //interactiveLayer.renderGuideLine(pointXLocation);
                 });
 
                 interactiveLayer.dispatch.on("elementMouseout",function(e) {
