@@ -1,4 +1,4 @@
-/* nvd3 version 1.8.5-dev (https://github.com/novus/nvd3) 2017-03-06 */
+/* nvd3 version 1.8.5-dev (https://github.com/novus/nvd3) 2017-03-07 */
 (function(){
 
 // set up main nv object
@@ -10200,7 +10200,7 @@ nv.models.multiChart = function() {
                             series: allData
                         })();
 
-                    interactiveLayer.renderGuideLine(pointXLocation);
+                    //interactiveLayer.renderGuideLine(pointXLocation);
                 });
 
                 interactiveLayer.dispatch.on("elementMouseout",function(e) {
