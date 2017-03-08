@@ -232,11 +232,11 @@ nv.models.multiChart = function() {
                     }).concat([{x:0, y:0}]);
             }
             
-            yScale1 .domain(yDomain1 || d3.extent(d3.merge(series1).concat(extraValue1BarStacked), function(d) { return d.y } ))
-                .range([0, availableHeight]);
+            yScale1.domain(yDomain1 || d3.extent(d3.extent(d3.merge(series1).concat(extraValue1BarStacked), function (d) { return d.y }).concat(lines1.forceY())))
+                .range([0, availableHeight])
 
-            yScale2 .domain(yDomain2 || d3.extent(d3.merge(series2).concat(extraValue2BarStacked), function(d) { return d.y } ))
-                .range([0, availableHeight]);
+            yScale2.domain(yDomain2 || d3.extent(d3.extent(d3.merge(series2).concat(extraValue2BarStacked), function (d) { return d.y }).concat(lines2.forceY())))
+                .range([0, availableHeight])
 
             lines1.yDomain(yScale1.domain());
             scatters1.yDomain(yScale1.domain());
