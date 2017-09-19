@@ -51,7 +51,7 @@ nv.models.multiChart = function() {
         yAxis2 = nv.models.axis().scale(yScale2).orient('right').duration(duration),
 
         legend = nv.models.legend().height(30),
-        tooltip = nv.models.tooltip(),
+        tooltip = nv.models.tooltip();
 
     // Because we use padData to adjust lines' outer padding so the data points line
     // up with the middle of the bars, we have to turn off voronoi because the use
