@@ -267,11 +267,17 @@ nv.models.multiChart = function() {
             //if(dataBars2.length){d3.transition(bars2Wrap).call(bars2);}
             if (dataBars1.length) {
                 d3.transition(bars1Wrap).call(bars1);
-                rbcOffset = bars1.rangeBandCentreOffset();
+                //only use offset if any of the bars1 are enabled
+                if ($.grep(dataBars1, function (o) { return !o.disabled }).length > 0) {
+                    rbcOffset = bars1.rangeBandCentreOffset();
+                }
             }
             if (dataBars2.length) {
                 d3.transition(bars2Wrap).call(bars2);
-                rbcOffset = bars2.rangeBandCentreOffset();
+                //only use offset if any of the bars2 are enabled
+                if ($.grep(dataBars2, function (o) { return !o.disabled }).length > 0) {
+                    rbcOffset = bars2.rangeBandCentreOffset();
+                }
             }
 
             //if(dataLines1.length){d3.transition(lines1Wrap).call(lines1);}
