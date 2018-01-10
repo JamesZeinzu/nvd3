@@ -21,13 +21,15 @@ nv.models.multiChart = function() {
         interactiveLayer = nv.interactiveGuideline(),
         useInteractiveGuideline = false,
         legendRightAxisHint = ' (right axis)',
+        state = nv.utils.state(),
+        dispatch = d3.dispatch('stateChange', 'changeState'), 	
         duration = 250
         ;
 
     //============================================================
     // Private Variables
     //------------------------------------------------------------
-
+	
     var x = d3.scale.linear(),
         yScale1 = d3.scale.linear(),
         yScale2 = d3.scale.linear(),
@@ -49,8 +51,7 @@ nv.models.multiChart = function() {
         yAxis2 = nv.models.axis().scale(yScale2).orient('right').duration(duration),
 
         legend = nv.models.legend().height(30),
-        tooltip = nv.models.tooltip(),
-        dispatch = d3.dispatch();
+        tooltip = nv.models.tooltip();
 
     // Because we use padData to adjust lines' outer padding so the data points line
     // up with the middle of the bars, we have to turn off voronoi because the use
@@ -450,6 +451,24 @@ nv.models.multiChart = function() {
               }
             }
 
+            legend.dispatch.on('stateChange', function (newState) {
+                for (var key in newState)
+                    state[key] = newState[key];
+                dispatch.stateChange(state);
+                chart.update();
+            });
+
+            dispatch.on('changeState', function (e) {
+                if (typeof e.disabled !== 'undefined' && data.length === e.disabled.length) {
+                    data.forEach(function (series, i) {
+                        series.disabled = e.disabled[i];
+                    });
+
+                    state.disabled = e.disabled;
+                }
+                chart.update();
+            });			
+			
             if(useInteractiveGuideline){
                 interactiveLayer.dispatch.on('elementMousemove', function(e) {
                     clearHighlights();
