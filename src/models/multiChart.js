@@ -303,17 +303,20 @@ nv.models.multiChart = function() {
             // We also want to add outer padding to x-axis so that axis ticks and labels align with
             // data points at centre of bars. We do this by translating x-axis by rbcOffset, and
             // reducing the width of the entire axis (via a scale transformation)
+            var scaleX = ((availableWidth - rbcOffset * 2) / availableWidth);
+            var minimumScaleX = 0.5; //hack: scaling too much skews the labels and makes them unreadable
+            var calculatedScaleX = scaleX < minimumScaleX ? minimumScaleX : scaleX; 
             g.select('.nv-x.nv-axis')
 //                .attr('transform', 'translate(0,' + availableHeight + ')');
                 .attr('transform',
                       'translate(' + rbcOffset + ', ' + availableHeight + ') ' +
-                      'scale(' + ((availableWidth - rbcOffset*2)/availableWidth) + ', 1)'
+                      'scale(' + calculatedScaleX + ', 1)'
 		     )
 
             g.select('.nv-interactive')
                 .attr('transform',
                 'translate(' + rbcOffset + ', 0) ' +
-                'scale(' + ((availableWidth - rbcOffset * 2) / availableWidth) + ', 1)'
+                'scale(' + calculatedScaleX + ', 1)'
                 )
 
             d3.transition(g.select('.nv-x.nv-axis'))
