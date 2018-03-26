@@ -1,4 +1,4 @@
-/* nvd3 version 1.8.6-dev (https://github.com/novus/nvd3) 2018-02-28 */
+/* nvd3 version 1.8.6-dev (https://github.com/novus/nvd3) 2018-03-26 */
 (function(){
 
 // set up main nv object
@@ -11099,6 +11099,13 @@ nv.models.multiChart = function() {
                 .datum(dataBars2.filter(function(d){return !d.disabled}));
             var stack2Wrap = g.select('.stack2Wrap')
                 .datum(dataStack2.filter(function(d){return !d.disabled}));
+
+            if (dataBars1.filter(function(d){return !d.disabled}).length <= 1) {
+                bars1.stacked(false);
+            }
+            if (dataBars2.filter(function(d){return !d.disabled}).length <= 1) {
+                bars2.stacked(false);
+            }
 
             var extraValue1BarStacked = [];
             if (bars1.stacked() && dataBars1.length) {
