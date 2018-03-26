@@ -1,4 +1,4 @@
-/* nvd3 version 1.8.6-dev (https://github.com/novus/nvd3) 2018-01-10 */
+/* nvd3 version 1.8.6-dev (https://github.com/novus/nvd3) 2018-02-28 */
 (function(){
 
 // set up main nv object
@@ -1746,7 +1746,19 @@ nv.models.axis = function() {
                             textHeight = box.height;
                             if(width > maxTextWidth) maxTextWidth = width;
                         });
-                        rotateLabelsRule = 'rotate(' + rotateLabels + ' 0,' + (textHeight/2 + axis.tickPadding()) + ')';
+
+                        rotateLabelsRule = ' rotate(' + rotateLabels + ' 0,' + (textHeight / 2 + axis.tickPadding()) + ')';
+
+                        var dataLines1 = data.filter(function (d) { return d.type == 'line' && d.yAxis == 1 });
+                        var dataLines2 = data.filter(function (d) { return d.type == 'line' && d.yAxis == 2 });
+
+                        if ((dataLines1.length + dataLines2.length) !== 4) {
+                            //hack: when there are 5 or fewer x-axis labels, fix the amount of skew caused by scaling so they are readable
+                            var fixLabelScale = xTicks[0].length < 3 ? ' scale(1, 1.8)' : 'scale(1, 1.4)';
+                            var fixLabel = xTicks[0].length < 6 ? fixLabelScale + ' skewX(' + (15 - (xTicks[0].length * 1)) + ') skewY(' + (14 - (xTicks[0].length * 2)) + ')' : '';
+                            rotateLabelsRule += fixLabel;
+                        }   
+						
                         //Convert to radians before calculating sin. Add 30 to margin for healthy padding.
                         var sin = Math.abs(Math.sin(rotateLabels*Math.PI/180));
                         xLabelMargin = (sin ? sin*maxTextWidth : maxTextWidth)+30;
@@ -11177,17 +11189,20 @@ nv.models.multiChart = function() {
             // We also want to add outer padding to x-axis so that axis ticks and labels align with
             // data points at centre of bars. We do this by translating x-axis by rbcOffset, and
             // reducing the width of the entire axis (via a scale transformation)
+            var scaleX = ((availableWidth - rbcOffset * 2) / availableWidth);
+            var minimumScaleX = 0.5; //hack: scaling too much skews the labels and makes them unreadable
+            var calculatedScaleX = scaleX < minimumScaleX ? minimumScaleX : scaleX; 
             g.select('.nv-x.nv-axis')
 //                .attr('transform', 'translate(0,' + availableHeight + ')');
                 .attr('transform',
                       'translate(' + rbcOffset + ', ' + availableHeight + ') ' +
-                      'scale(' + ((availableWidth - rbcOffset*2)/availableWidth) + ', 1)'
+                      'scale(' + calculatedScaleX + ', 1)'
 		     )
 
             g.select('.nv-interactive')
                 .attr('transform',
                 'translate(' + rbcOffset + ', 0) ' +
-                'scale(' + ((availableWidth - rbcOffset * 2) / availableWidth) + ', 1)'
+                'scale(' + calculatedScaleX + ', 1)'
                 )
 
             d3.transition(g.select('.nv-x.nv-axis'))
